@@ -19,13 +19,13 @@ from scipy.special import softmax
 from losses import RnCLoss
 
 EPOCHS = 400
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 WARMUP_EPOCHS = 50
 INITIAL_LR = 0.0
 TARGET_LR = 0.001
 SEED = 42
 
-def main(dataset: str, backbone: str, temperature: float):    
+def main(dataset: str, backbone: str):    
 
     identifier = str(uuid.uuid4())
     seed_everything(SEED)
@@ -38,7 +38,6 @@ def main(dataset: str, backbone: str, temperature: float):
     mlflow.log_param("seed", SEED)
     mlflow.log_param("dataset", dataset)
     mlflow.log_param("backbone", backbone)   
-    mlflow.log_param("temperature", temperature) 
 
     match dataset:
         case "soft_tissue_tumors":
@@ -91,6 +90,8 @@ def main(dataset: str, backbone: str, temperature: float):
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, generator=generator, drop_last=True, worker_init_fn=worker_init_fn)
 
     match backbone:
+        case "resnet10":
+            model = ResNet3DMonai(depth=10, n_classes=n_classes, features_only=True).cuda()        
         case "resnet18":
             model = ResNet3DMonai(depth=18, n_classes=n_classes, features_only=True).cuda()
         case "densenet121":
@@ -103,7 +104,7 @@ def main(dataset: str, backbone: str, temperature: float):
     mlflow.log_param("num_params", model_params)
     
     # loss_fn = torch.nn.CrossEntropyLoss()
-    loss_fn = RnCLoss(temperature=temperature, label_diff='l1', feature_sim='l2') 
+    loss_fn = RnCLoss(temperature=2.0, label_diff='l1', feature_sim='l2') 
     optimizer = torch.optim.SGD(model.parameters(), momentum=0.9, weight_decay=1e-3)
 
     scaler = GradScaler()
@@ -242,7 +243,7 @@ def main(dataset: str, backbone: str, temperature: float):
 if __name__ == "__main__":
 
     for dataset in ["soft_tissue_tumors", "lung_nodules"]:
-        for backbone in ["resnet18", "densenet121"]:            
+        for backbone in ["resnet10", "resnet18", "densenet121"]:            
 
             mlflow.set_experiment(experiment_name=f"{dataset}")
             mlflow.start_run() 

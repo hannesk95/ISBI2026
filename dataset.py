@@ -39,8 +39,8 @@ class OrdinalClassificationDataset(Dataset):
         if self.training:
             image = self.transforms(image)
 
-        if "resnet" in self.backbone:
-            image = image.repeat(3, 1, 1, 1)  # Convert to 3 channels if input is single-channel
+        # if "resnet" in self.backbone:
+        #     image = image.repeat(3, 1, 1, 1)  # Convert to 3 channels if input is single-channel
 
         return image, label
 

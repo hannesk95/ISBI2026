@@ -93,6 +93,14 @@ class ResNet3DMonai(torch.nn.Module):
         super(ResNet3DMonai, self).__init__()
 
         match depth:
+            case 10:
+                self.model = monai.networks.nets.resnet10(spatial_dims=3, n_input_channels=1, num_classes=n_classes)
+
+                if features_only:
+                    self.model = monai.networks.nets.ResNetFeatures("resnet10", pretrained=True, spatial_dims=3, in_channels=1)
+                    self.model = nn.Sequential(*list(self.model.children())[:-1])
+                    self.model.append(nn.AdaptiveAvgPool3d(1)).append(nn.Flatten(start_dim=1, end_dim=-1))
+
             case 18:
                 self.model = monai.networks.nets.resnet18(spatial_dims=3, n_input_channels=1, num_classes=n_classes)
 
@@ -103,8 +111,20 @@ class ResNet3DMonai(torch.nn.Module):
 
             case 34:
                 self.model = monai.networks.nets.resnet34(spatial_dims=3, n_input_channels=1, num_classes=n_classes)
+
+                if features_only:
+                    self.model = monai.networks.nets.ResNetFeatures("resnet34", pretrained=True, spatial_dims=3, in_channels=1)
+                    self.model = nn.Sequential(*list(self.model.children())[:-1])
+                    self.model.append(nn.AdaptiveAvgPool3d(1)).append(nn.Flatten(start_dim=1, end_dim=-1))
+            
             case 50:
                 self.model = monai.networks.nets.resnet50(spatial_dims=3, n_input_channels=1, num_classes=n_classes)
+
+                if features_only:
+                    self.model = monai.networks.nets.ResNetFeatures("resnet50", pretrained=True, spatial_dims=3, in_channels=1)
+                    self.model = nn.Sequential(*list(self.model.children())[:-1])
+                    self.model.append(nn.AdaptiveAvgPool3d(1)).append(nn.Flatten(start_dim=1, end_dim=-1))
+            
             case _:
                 raise ValueError(f"Unsupported ResNet depth: {depth}")
 

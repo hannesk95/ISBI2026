@@ -1,4 +1,4 @@
-from model import ResNet3DImageNetInflated, DenseNet3DMonai, EfficientNet3DMonai
+from model import ResNet3DImageNetInflated, DenseNet3DMonai, EfficientNet3DMonai, ResNet3DMonai
 import torch
 from dataset import OrdinalClassificationDataset
 from torch.utils.data import DataLoader
@@ -89,6 +89,8 @@ def main(dataset: str, backbone: str, weights_path: str):
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, generator=generator, drop_last=True, worker_init_fn=worker_init_fn)
 
     match backbone:
+        case "resnet10":
+            model = ResNet3DMonai(depth=10, n_classes=n_classes).cuda()
         case "resnet18":
             model = ResNet3DImageNetInflated(depth=18, n_classes=n_classes, pretrained=True).cuda()
         case "densenet121":

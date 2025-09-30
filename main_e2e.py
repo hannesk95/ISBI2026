@@ -89,6 +89,8 @@ def main(dataset: str, backbone: str):
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, generator=generator, drop_last=True, worker_init_fn=worker_init_fn)
 
     match backbone:
+        case "resnet10":
+            model = ResNet3DMonai(depth=10, n_classes=n_classes).cuda()
         case "resnet18":
             model = ResNet3DMonai(depth=18, n_classes=n_classes).cuda()
         case "densenet121":
@@ -334,7 +336,7 @@ def main(dataset: str, backbone: str):
 if __name__ == "__main__":
 
     for dataset in ["lung_nodules", "soft_tissue_tumors"]:
-        for backbone in ["densenet121", "resnet18"]:
+        for backbone in ["resnet10"]:
 
             mlflow.set_experiment(experiment_name=f"{dataset}")
             mlflow.start_run() 
