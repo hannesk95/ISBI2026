@@ -15,3 +15,10 @@ def seed_everything(seed: int = 42):
     torch.backends.cudnn.benchmark = False
     os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
 
+
+def worker_init_fn(worker_id):
+    """Initialize each DataLoader worker with a different but deterministic seed."""
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    import random
+    random.seed(worker_seed)

@@ -1,8 +1,8 @@
-from model import ResNet3DImageNetInflated, DenseNet3DMonai, EfficientNet3DMonai
+from model import ResNet3DImageNetInflated, DenseNet3DMonai, EfficientNet3DMonai, ResNet3DMonai
 import torch
 from dataset import OrdinalClassificationDataset
 from torch.utils.data import DataLoader
-from utils import seed_everything
+from utils import seed_everything, worker_init_fn
 from glob import glob
 import mlflow
 from sklearn.model_selection import train_test_split
@@ -27,7 +27,8 @@ SEED = 42
 def main(dataset: str, backbone: str):
 
     identifier = str(uuid.uuid4())
-    seed_everything(SEED)
+    seed_everything(SEED)    
+    mlflow.log_param("train_strategy", "end_to_end")
     mlflow.log_param("epochs", EPOCHS)
     mlflow.log_param("batch_size", BATCH_SIZE)
     mlflow.log_param("warmup_epochs", WARMUP_EPOCHS)
@@ -37,6 +38,7 @@ def main(dataset: str, backbone: str):
     mlflow.log_param("dataset", dataset)
     mlflow.log_param("backbone", backbone)    
 
+
     match dataset:
         case "soft_tissue_tumors":
             data = glob("/home/johannes/Data/SSD_2.0TB/ISBI2026/data/OrdinalClassificationSarcoma/dataset_final/*.pt")
@@ -45,7 +47,8 @@ def main(dataset: str, backbone: str):
         case "lung_nodules":
             data = glob("/home/johannes/Data/SSD_2.0TB/ISBI2026/data/OrdinalClassificationLung/dataset_final/*.pt")
             labels = [int(path.split("/")[-1].split("_")[-1][0]) for path in data] 
-            labels = labels - np.min(labels)  # Ensure labels start from 0
+            labels = np.array(labels) - np.min(labels)  # Ensure labels start from 0
+            labels = labels.tolist()  # Convert back to list for compatibility
             n_classes = 5
         case _:
             raise ValueError("Dataset not implemented!")
@@ -78,23 +81,18 @@ def main(dataset: str, backbone: str):
                                     num_samples=len(sample_weights), # draw same size as dataset
                                     replacement=True)
 
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, drop_last=True, sampler=sampler)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, drop_last=True)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, drop_last=True)
+    generator = torch.Generator()
+    generator.manual_seed(SEED)
+
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, sampler=sampler, generator=generator, drop_last=True, worker_init_fn=worker_init_fn)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, generator=generator, drop_last=True, worker_init_fn=worker_init_fn)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, generator=generator, drop_last=True, worker_init_fn=worker_init_fn)
 
     match backbone:
         case "resnet18":
-            model = ResNet3DImageNetInflated(depth=18, n_classes=n_classes, pretrained=True).cuda()
+            model = ResNet3DMonai(depth=18, n_classes=n_classes).cuda()
         case "densenet121":
-            model = DenseNet3DMonai(depth=121, n_classes=n_classes).cuda()
-        case "efficientnet-b0":
-            model = EfficientNet3DMonai(model_name="efficientnet-b0", n_classes=n_classes).cuda()
-        case "efficientnet-b1":
-            model = EfficientNet3DMonai(model_name="efficientnet-b1", n_classes=n_classes).cuda()
-        case "efficientnet-b2":
-            model = EfficientNet3DMonai(model_name="efficientnet-b2", n_classes=n_classes).cuda()
-        case "efficientnet-b3":
-            model = EfficientNet3DMonai(model_name="efficientnet-b3", n_classes=n_classes).cuda()            
+            model = DenseNet3DMonai(depth=121, n_classes=n_classes).cuda()        
         case _:
             raise ValueError("Backbone not implemented!")
 
@@ -336,12 +334,9 @@ def main(dataset: str, backbone: str):
 if __name__ == "__main__":
 
     for dataset in ["lung_nodules", "soft_tissue_tumors"]:
-    # for dataset in ["soft_tissue_tumors"]:
-        for backbone in ["densenet121"]:
-        # for backbone in ["efficientnet-b0", "efficientnet-b1", "efficientnet-b2", "efficientnet-b3", "resnet18"]:
-            print(f"Starting experiment for dataset: {dataset} with backbone: {backbone}")
+        for backbone in ["densenet121", "resnet18"]:
 
-            mlflow.set_experiment(experiment_name=f"{dataset}_end2end")
+            mlflow.set_experiment(experiment_name=f"{dataset}")
             mlflow.start_run() 
             main(dataset, backbone)
             mlflow.end_run()

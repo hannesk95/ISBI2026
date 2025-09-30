@@ -1,3 +1,4 @@
+from xml.parsers.expat import model
 import torch
 import torchvision
 from inflated_convnets_pytorch.src.i3res import I3ResNet
@@ -76,10 +77,10 @@ class EfficientNet3DMonai(torch.nn.Module):
     def __init__(self, model_name: str = "efficientnet-b0", n_classes: int = 5):
         super(EfficientNet3DMonai, self).__init__()
 
-        # b0:  4694785
-        # b1:  7452901
-        # b2:  8721991
-        # b3: 12066157
+        # b0:  4694785 params
+        # b1:  7452901 params
+        # b2:  8721991 params
+        # b3: 12066157 params
 
         self.model = monai.networks.nets.EfficientNetBN(spatial_dims=3, in_channels=1, num_classes=n_classes, model_name=model_name)
 
@@ -88,12 +89,18 @@ class EfficientNet3DMonai(torch.nn.Module):
         return self.model(x)
     
 class ResNet3DMonai(torch.nn.Module):
-    def __init__(self, depth: int = 18, n_classes: int = 5):
+    def __init__(self, depth: int = 18, n_classes: int = 5, features_only: bool = False):
         super(ResNet3DMonai, self).__init__()
 
         match depth:
             case 18:
                 self.model = monai.networks.nets.resnet18(spatial_dims=3, n_input_channels=1, num_classes=n_classes)
+
+                if features_only:
+                    self.model = monai.networks.nets.ResNetFeatures("resnet18", pretrained=True, spatial_dims=3, in_channels=1)
+                    self.model = nn.Sequential(*list(self.model.children())[:-1])
+                    self.model.append(nn.AdaptiveAvgPool3d(1)).append(nn.Flatten(start_dim=1, end_dim=-1))
+
             case 34:
                 self.model = monai.networks.nets.resnet34(spatial_dims=3, n_input_channels=1, num_classes=n_classes)
             case 50:

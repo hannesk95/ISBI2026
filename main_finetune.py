@@ -2,7 +2,7 @@ from model import ResNet3DImageNetInflated, DenseNet3DMonai, EfficientNet3DMonai
 import torch
 from dataset import OrdinalClassificationDataset
 from torch.utils.data import DataLoader
-from utils import seed_everything
+from utils import seed_everything, worker_init_fn
 from glob import glob
 import mlflow
 from sklearn.model_selection import train_test_split
@@ -29,6 +29,7 @@ def main(dataset: str, backbone: str, weights_path: str):
 
     identifier = str(uuid.uuid4())
     seed_everything(SEED)
+    mlflow.log_param("train_strategy", "finetune")
     mlflow.log_param("epochs", EPOCHS)
     mlflow.log_param("batch_size", BATCH_SIZE)
     mlflow.log_param("warmup_epochs", WARMUP_EPOCHS)
@@ -46,7 +47,8 @@ def main(dataset: str, backbone: str, weights_path: str):
         case "lung_nodules":
             data = glob("/home/johannes/Data/SSD_2.0TB/ISBI2026/data/OrdinalClassificationLung/dataset_final/*.pt")
             labels = [int(path.split("/")[-1].split("_")[-1][0]) for path in data] 
-            labels = labels - np.min(labels)  # Ensure labels start from 0
+            labels = np.array(labels) - np.min(labels)  # Ensure labels start from 0
+            labels = labels.tolist()  # Convert back to list for compatibility
             n_classes = 5
         case _:
             raise ValueError("Dataset not implemented!")
@@ -79,9 +81,12 @@ def main(dataset: str, backbone: str, weights_path: str):
                                     num_samples=len(sample_weights), # draw same size as dataset
                                     replacement=True)
 
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, drop_last=True, sampler=sampler)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, drop_last=True)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, drop_last=True)
+    generator = torch.Generator()
+    generator.manual_seed(SEED)
+
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, sampler=sampler, generator=generator, drop_last=True, worker_init_fn=worker_init_fn)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, generator=generator, drop_last=True, worker_init_fn=worker_init_fn)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, generator=generator, drop_last=True, worker_init_fn=worker_init_fn)
 
     match backbone:
         case "resnet18":
@@ -356,14 +361,17 @@ def main(dataset: str, backbone: str, weights_path: str):
 
 if __name__ == "__main__":
 
-    # for dataset in ["lung_nodules"]:
-    for dataset in ["soft_tissue_tumors"]:
-        for backbone in ["densenet121"]:
-            print(f"Starting experiment for dataset: {dataset} with backbone: {backbone}")
+    for dataset in ["soft_tissue_tumors", "lung_nodules"]:
+        for backbone in ["resnet18", "densenet121"]:
 
-            weights_path = "/media/johannes/SSD_2.0TB/ISBI2026/mlruns/739903694963252151/6cbad85fa1744a8c97ba8ada19207aa4/artifacts/model_last_7c376f95-8255-4dae-8c56-31675f52fcec.pth"
+            if dataset == "soft_tissue_tumors":
+                weights_path = "/media/johannes/SSD_2.0TB/ISBI2026/mlruns/739903694963252151/6cbad85fa1744a8c97ba8ada19207aa4/artifacts/model_last_7c376f95-8255-4dae-8c56-31675f52fcec.pth"
+            elif dataset == "lung_nodules":
+                weights_path = "/media/johannes/SSD_2.0TB/ISBI2026/mlruns/739903694963252151/1a4e2e3f5f3b4d1c8e2f3b1a4e2e3f5f/artifacts/model_last_6c376f95-8255-4dae-8c56-31675f52fcec.pth"
+            else:
+                raise ValueError("Dataset not implemented!")
 
-            mlflow.set_experiment(experiment_name=f"{dataset}_finetune")
+            mlflow.set_experiment(experiment_name=f"{dataset}")
             mlflow.start_run() 
             main(dataset, backbone, weights_path)
             mlflow.end_run()
