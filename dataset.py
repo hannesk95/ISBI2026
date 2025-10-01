@@ -12,12 +12,11 @@ from monai.transforms import Compose
 
 
 class OrdinalClassificationDataset(Dataset):
-    def __init__(self, data: list, labels: list, training: bool, backbone: str):
+    def __init__(self, data: list, labels: list, training: bool):
         
         self.data = data
         self.labels = labels
         self.training = training
-        self.backbone = backbone
 
         rotate = monai.transforms.RandRotate(prob=0.2, range_x=10, range_y=10, range_z=10)
         scale = monai.transforms.RandZoom(prob=0.2, min_zoom=0.7, max_zoom=1.4)

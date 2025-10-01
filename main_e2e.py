@@ -16,9 +16,10 @@ import os
 import time
 import uuid
 from scipy.special import softmax
+from monai.data.utils import pad_list_data_collate
 
 EPOCHS = 500
-BATCH_SIZE = 32
+BATCH_SIZE = 8
 WARMUP_EPOCHS = 50
 INITIAL_LR = 0.0
 TARGET_LR = 0.001
@@ -44,21 +45,72 @@ def main(dataset: str, backbone: str):
             data = glob("/home/johannes/Data/SSD_2.0TB/ISBI2026/data/OrdinalClassificationSarcoma/dataset_final/*.pt")
             labels = [int(path.split("/")[-1].split("_")[-3][1]) for path in data]
             n_classes = 4
+
+            train_data, val_data, train_labels, val_labels = train_test_split(data, labels, test_size=0.3, stratify=labels, random_state=SEED)
+            val_data, test_data, val_labels, test_labels = train_test_split(val_data, val_labels, test_size=0.5, stratify=val_labels, random_state=SEED)
+        
         case "lung_nodules":
             data = glob("/home/johannes/Data/SSD_2.0TB/ISBI2026/data/OrdinalClassificationLung/dataset_final/*.pt")
             labels = [int(path.split("/")[-1].split("_")[-1][0]) for path in data] 
             labels = np.array(labels) - np.min(labels)  # Ensure labels start from 0
             labels = labels.tolist()  # Convert back to list for compatibility
             n_classes = 5
+
+            train_data, val_data, train_labels, val_labels = train_test_split(data, labels, test_size=0.3, stratify=labels, random_state=SEED)
+            val_data, test_data, val_labels, test_labels = train_test_split(val_data, val_labels, test_size=0.5, stratify=val_labels, random_state=SEED)
+        
+        case "adni_leakage":
+            # CN → SMC → EMCI → LMCI → AD
+            data = glob("/home/johannes/Data/SSD_2.0TB/ISBI2026/data/OrdinalClassificationADNI/dataset_final/*2mm*.pt")
+            labels = [f.split("/")[-1].split("_")[-3].replace(".nii.gz", "") for f in data]
+            label_mapping = {"CN": 0, "SMC": 1, "EMCI": 2, "LMCI": 3, "AD": 4}
+            labels = [label_mapping[label] for label in labels]
+            n_classes = 5
+            train_data, val_data, train_labels, val_labels = train_test_split(data, labels, test_size=0.3, stratify=labels, random_state=SEED)
+            val_data, test_data, val_labels, test_labels = train_test_split(val_data, val_labels, test_size=0.5, stratify=val_labels, random_state=SEED)
+
+        case "adni":
+            # CN → SMC → EMCI → LMCI → AD
+            data = glob("/home/johannes/Data/SSD_2.0TB/ISBI2026/data/OrdinalClassificationADNI/dataset_final/*2mm*.pt")
+            patient_ids = [f.split("/")[-1][:10] for f in data]
+            patient_ids = list(set(patient_ids))            
+
+            train_ids, val_ids = train_test_split(patient_ids, test_size=0.3, random_state=SEED)
+            val_ids, test_ids = train_test_split(val_ids, test_size=0.5, random_state=SEED)
+
+            assert set(train_ids).isdisjoint(val_ids)
+            assert set(train_ids).isdisjoint(test_ids)
+            assert set(val_ids).isdisjoint(test_ids)
+
+            train_data = []
+            val_data = []
+            test_data = []
+            for f in data:
+                pid = f.split("/")[-1][:10]
+                if pid in train_ids:
+                    train_data.append(f)
+                elif pid in val_ids:
+                    val_data.append(f)
+                elif pid in test_ids:
+                    test_data.append(f)
+            
+            train_labels = [f.split("/")[-1].split("_")[-3].replace(".nii.gz", "") for f in train_data]
+            val_labels = [f.split("/")[-1].split("_")[-3].replace(".nii.gz", "") for f in val_data]
+            test_labels = [f.split("/")[-1].split("_")[-3].replace(".nii.gz", "") for f in test_data]
+            label_mapping = {"CN": 0, "SMC": 1, "EMCI": 2, "LMCI": 3, "AD": 4}
+            train_labels = [label_mapping[label] for label in train_labels]
+            val_labels = [label_mapping[label] for label in val_labels]
+            test_labels = [label_mapping[label] for label in test_labels]
+            n_classes = 5
+            
         case _:
             raise ValueError("Dataset not implemented!")
             
-    train_data, val_data, train_labels, val_labels = train_test_split(data, labels, test_size=0.3, stratify=labels, random_state=SEED)
-    val_data, test_data, val_labels, test_labels = train_test_split(val_data, val_labels, test_size=0.5, stratify=val_labels, random_state=SEED)
+    
 
-    train_dataset = OrdinalClassificationDataset(train_data, train_labels, training=True, backbone=backbone)
-    val_dataset = OrdinalClassificationDataset(val_data, val_labels, training=False, backbone=backbone)
-    test_dataset = OrdinalClassificationDataset(test_data, test_labels, training=False, backbone=backbone)
+    train_dataset = OrdinalClassificationDataset(train_data, train_labels, training=True)
+    val_dataset = OrdinalClassificationDataset(val_data, val_labels, training=False)
+    test_dataset = OrdinalClassificationDataset(test_data, test_labels, training=False)
 
     print(f"Number of train samples: {str(len(train_dataset)).zfill(3)}")
     print(f"Number of val samples:   {str(len(val_dataset)).zfill(3)}")
@@ -84,9 +136,9 @@ def main(dataset: str, backbone: str):
     generator = torch.Generator()
     generator.manual_seed(SEED)
 
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, sampler=sampler, generator=generator, drop_last=True, worker_init_fn=worker_init_fn)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, generator=generator, drop_last=True, worker_init_fn=worker_init_fn)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, generator=generator, drop_last=True, worker_init_fn=worker_init_fn)
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, sampler=sampler, generator=generator, drop_last=True, worker_init_fn=worker_init_fn, collate_fn=pad_list_data_collate)
+    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, generator=generator, drop_last=True, worker_init_fn=worker_init_fn, collate_fn=pad_list_data_collate)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, generator=generator, drop_last=True, worker_init_fn=worker_init_fn, collate_fn=pad_list_data_collate)
 
     match backbone:
         case "resnet10":
@@ -335,8 +387,9 @@ def main(dataset: str, backbone: str):
 
 if __name__ == "__main__":
 
-    for dataset in ["lung_nodules", "soft_tissue_tumors"]:
-        for backbone in ["resnet10"]:
+    # for dataset in ["adni", "lung_nodules", "soft_tissue_tumors"]:
+    for dataset in ["adni"]:
+        for backbone in ["resnet10", "resnet18", "densenet121"]:
 
             mlflow.set_experiment(experiment_name=f"{dataset}")
             mlflow.start_run() 
