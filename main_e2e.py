@@ -42,7 +42,7 @@ def main(dataset: str, backbone: str):
 
     match dataset:
         case "soft_tissue_tumors":
-            data = glob("/home/johannes/Data/SSD_2.0TB/ISBI2026/data/OrdinalClassificationSarcoma/dataset_final/*.pt")
+            data = glob("./data/OrdinalClassificationSarcoma/dataset_final/*.pt")
             labels = [int(path.split("/")[-1].split("_")[-3][1]) for path in data]
             n_classes = 4
 
@@ -50,7 +50,7 @@ def main(dataset: str, backbone: str):
             val_data, test_data, val_labels, test_labels = train_test_split(val_data, val_labels, test_size=0.5, stratify=val_labels, random_state=SEED)
         
         case "lung_nodules":
-            data = glob("/home/johannes/Data/SSD_2.0TB/ISBI2026/data/OrdinalClassificationLung/dataset_final/*.pt")
+            data = glob("./data/OrdinalClassificationLung/dataset_final/*.pt")
             labels = [int(path.split("/")[-1].split("_")[-1][0]) for path in data] 
             labels = np.array(labels) - np.min(labels)  # Ensure labels start from 0
             labels = labels.tolist()  # Convert back to list for compatibility
@@ -61,7 +61,7 @@ def main(dataset: str, backbone: str):
         
         case "adni_leakage":
             # CN → SMC → EMCI → LMCI → AD
-            data = glob("/home/johannes/Data/SSD_2.0TB/ISBI2026/data/OrdinalClassificationADNI/dataset_final/*2mm*.pt")
+            data = glob("./data/OrdinalClassificationADNI/dataset_final/*2mm*.pt")
             labels = [f.split("/")[-1].split("_")[-3].replace(".nii.gz", "") for f in data]
             label_mapping = {"CN": 0, "SMC": 1, "EMCI": 2, "LMCI": 3, "AD": 4}
             labels = [label_mapping[label] for label in labels]
@@ -71,7 +71,7 @@ def main(dataset: str, backbone: str):
 
         case "adni":
             # CN → SMC → EMCI → LMCI → AD
-            data = glob("/home/johannes/Data/SSD_2.0TB/ISBI2026/data/OrdinalClassificationADNI/dataset_final/*2mm*.pt")
+            data = glob("./data/OrdinalClassificationADNI/dataset_final/*2mm*.pt")
             patient_ids = [f.split("/")[-1][:10] for f in data]
             patient_ids = list(set(patient_ids))            
 

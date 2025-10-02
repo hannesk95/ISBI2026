@@ -41,11 +41,11 @@ def main(dataset: str, backbone: str, weights_path: str):
 
     match dataset:
         case "soft_tissue_tumors":
-            data = glob("/home/johannes/Data/SSD_2.0TB/ISBI2026/data/OrdinalClassificationSarcoma/dataset_final/*.pt")
+            data = glob("./data/OrdinalClassificationSarcoma/dataset_final/*.pt")
             labels = [int(path.split("/")[-1].split("_")[-3][1]) for path in data]
             n_classes = 4
         case "lung_nodules":
-            data = glob("/home/johannes/Data/SSD_2.0TB/ISBI2026/data/OrdinalClassificationLung/dataset_final/*.pt")
+            data = glob("./data/OrdinalClassificationLung/dataset_final/*.pt")
             labels = [int(path.split("/")[-1].split("_")[-1][0]) for path in data] 
             labels = np.array(labels) - np.min(labels)  # Ensure labels start from 0
             labels = labels.tolist()  # Convert back to list for compatibility
