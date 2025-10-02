@@ -39,7 +39,6 @@ def main(dataset: str, backbone: str):
     mlflow.log_param("dataset", dataset)
     mlflow.log_param("backbone", backbone)    
 
-
     match dataset:
         case "soft_tissue_tumors":
             data = glob("./data/OrdinalClassificationSarcoma/dataset_final/*.pt")
