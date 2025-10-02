@@ -1,59 +1,58 @@
-from xml.parsers.expat import model
 import torch
 import torchvision
-from inflated_convnets_pytorch.src.i3res import I3ResNet
-from inflated_convnets_pytorch.src.i3dense import I3DenseNet
-import copy
-from torchvision.models import ResNet18_Weights, ResNet34_Weights, ResNet50_Weights, DenseNet121_Weights
+# from inflated_convnets_pytorch.src.i3res import I3ResNet
+# from inflated_convnets_pytorch.src.i3dense import I3DenseNet
+# import copy
+# from torchvision.models import ResNet18_Weights, ResNet34_Weights, ResNet50_Weights, DenseNet121_Weights
 import monai
 import torch.nn as nn
 
-class ResNet3DImageNetInflated(torch.nn.Module):
-    def __init__(self, depth: int = 50, n_classes: int = 2, pretrained: bool = True):
-        super(ResNet3DImageNetInflated, self).__init__()
+# class ResNet3DImageNetInflated(torch.nn.Module):
+#     def __init__(self, depth: int = 50, n_classes: int = 2, pretrained: bool = True):
+#         super(ResNet3DImageNetInflated, self).__init__()
         
-        match depth:
-            case 18:
-                weights = ResNet18_Weights.DEFAULT if pretrained else None
-                resnet = torchvision.models.resnet18(weights=weights)
-            case 34:
-                weights = ResNet34_Weights.DEFAULT if pretrained else None
-                resnet = torchvision.models.resnet34(weights=weights)
-            case 50:
-                weights = ResNet50_Weights.DEFAULT if pretrained else None
-                resnet = torchvision.models.resnet50(weights=weights)
-            case _:
-                raise ValueError(f"Unsupported ResNet depth: {depth}")
+#         match depth:
+#             case 18:
+#                 weights = ResNet18_Weights.DEFAULT if pretrained else None
+#                 resnet = torchvision.models.resnet18(weights=weights)
+#             case 34:
+#                 weights = ResNet34_Weights.DEFAULT if pretrained else None
+#                 resnet = torchvision.models.resnet34(weights=weights)
+#             case 50:
+#                 weights = ResNet50_Weights.DEFAULT if pretrained else None
+#                 resnet = torchvision.models.resnet50(weights=weights)
+#             case _:
+#                 raise ValueError(f"Unsupported ResNet depth: {depth}")
 
-        self.model = I3ResNet(copy.deepcopy(resnet), frame_nb=16)
+#         self.model = I3ResNet(copy.deepcopy(resnet), frame_nb=16)
 
-        if self.model.fc.out_features != n_classes:
-            self.model.fc = torch.nn.Linear(self.model.fc.in_features, n_classes, bias=True)
+#         if self.model.fc.out_features != n_classes:
+#             self.model.fc = torch.nn.Linear(self.model.fc.in_features, n_classes, bias=True)
 
-    def forward(self, x):
-        # Assuming x is of shape (batch_size, channels, depth, height, width)
-        return self.model(x)
+#     def forward(self, x):
+#         # Assuming x is of shape (batch_size, channels, depth, height, width)
+#         return self.model(x)
     
     
-class DenseNet3DImageNetInflated(torch.nn.Module):
-    def __init__(self, depth: int = 121, n_classes: int = 2, pretrained: bool = True):
-        super(DenseNet3DImageNetInflated, self).__init__()
+# class DenseNet3DImageNetInflated(torch.nn.Module):
+#     def __init__(self, depth: int = 121, n_classes: int = 2, pretrained: bool = True):
+#         super(DenseNet3DImageNetInflated, self).__init__()
 
-        match depth:
-            case 121:
-                weights = DenseNet121_Weights.DEFAULT if pretrained else None
-                densenet = torchvision.models.densenet121(weights=weights)
-            case _:
-                raise ValueError(f"Unsupported DenseNet depth: {depth}")
+#         match depth:
+#             case 121:
+#                 weights = DenseNet121_Weights.DEFAULT if pretrained else None
+#                 densenet = torchvision.models.densenet121(weights=weights)
+#             case _:
+#                 raise ValueError(f"Unsupported DenseNet depth: {depth}")
 
-        self.model = I3DenseNet(copy.deepcopy(densenet), frame_nb=128, inflate_block_convs=True)
+#         self.model = I3DenseNet(copy.deepcopy(densenet), frame_nb=128, inflate_block_convs=True)
 
-        if self.model.classifier.out_features != n_classes:
-            self.model.classifier = torch.nn.Linear(self.model.classifier.in_features, n_classes, bias=True)
+#         if self.model.classifier.out_features != n_classes:
+#             self.model.classifier = torch.nn.Linear(self.model.classifier.in_features, n_classes, bias=True)
 
-    def forward(self, x):
-        # Assuming x is of shape (batch_size, channels, depth, height, width)
-        return self.model(x)
+#     def forward(self, x):
+#         # Assuming x is of shape (batch_size, channels, depth, height, width)
+#         return self.model(x)
 
 
 class DenseNet3DMonai(torch.nn.Module):

@@ -1,4 +1,4 @@
-from model import ResNet3DImageNetInflated, DenseNet3DMonai, EfficientNet3DMonai, ResNet3DMonai
+from model import DenseNet3DMonai, EfficientNet3DMonai, ResNet3DMonai
 import torch
 from dataset import OrdinalClassificationDataset
 from torch.utils.data import DataLoader
