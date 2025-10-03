@@ -45,12 +45,29 @@ def main(dataset: str, backbone: str):
             data = glob("./data/OrdinalClassificationSarcoma/dataset_final/*.pt")
             labels = [int(path.split("/")[-1].split("_")[-3][1]) for path in data]
             n_classes = 4
+
+            train_data, val_data, train_labels, val_labels = train_test_split(data, labels, test_size=0.3, stratify=labels, random_state=SEED)
+            val_data, test_data, val_labels, test_labels = train_test_split(val_data, val_labels, test_size=0.5, stratify=val_labels, random_state=SEED)
+        
         case "lung_nodules":
             data = glob("./data/OrdinalClassificationLung/dataset_final/*.pt")
             labels = [int(path.split("/")[-1].split("_")[-1][0]) for path in data] 
             labels = np.array(labels) - np.min(labels)  # Ensure labels start from 0
             labels = labels.tolist()  # Convert back to list for compatibility
             n_classes = 5
+
+            train_data, val_data, train_labels, val_labels = train_test_split(data, labels, test_size=0.3, stratify=labels, random_state=SEED)
+            val_data, test_data, val_labels, test_labels = train_test_split(val_data, val_labels, test_size=0.5, stratify=val_labels, random_state=SEED)
+        
+        case "adni_leakage":
+            # CN → SMC → EMCI → LMCI → AD
+            data = glob("./data/OrdinalClassificationADNI/dataset_final/*2mm*.pt")
+            labels = [f.split("/")[-1].split("_")[-3].replace(".nii.gz", "") for f in data]
+            label_mapping = {"CN": 0, "SMC": 1, "EMCI": 2, "LMCI": 3, "AD": 4}
+            labels = [label_mapping[label] for label in labels]
+            n_classes = 5
+            train_data, val_data, train_labels, val_labels = train_test_split(data, labels, test_size=0.3, stratify=labels, random_state=SEED)
+            val_data, test_data, val_labels, test_labels = train_test_split(val_data, val_labels, test_size=0.5, stratify=val_labels, random_state=SEED)
 
         case "adni":
             # CN → SMC → EMCI → LMCI → AD
@@ -85,13 +102,10 @@ def main(dataset: str, backbone: str):
             val_labels = [label_mapping[label] for label in val_labels]
             test_labels = [label_mapping[label] for label in test_labels]
             n_classes = 5
-
+            
         case _:
             raise ValueError("Dataset not implemented!")
-            
-    train_data, val_data, train_labels, val_labels = train_test_split(data, labels, test_size=0.3, stratify=labels, random_state=SEED)
-    val_data, test_data, val_labels, test_labels = train_test_split(val_data, val_labels, test_size=0.5, stratify=val_labels, random_state=SEED)
-
+        
     train_dataset = RnCDataset(train_data, train_labels, training=True)
     val_dataset = RnCDataset(val_data, val_labels, training=False)
     test_dataset = RnCDataset(test_data, test_labels, training=False)
