@@ -56,7 +56,7 @@ class RnCDataset(Dataset):
         contrast = monai.transforms.RandAdjustContrast()
         intensity = monai.transforms.RandScaleIntensity(factors=(2, 10))
         histogram_shift = monai.transforms.RandHistogramShift()
-        self.transforms = Compose([rotate, scale, gaussian_noise, gaussian_blur, contrast, intensity, histogram_shift])
+        self.transforms = Compose([rotate, scale, gaussian_noise])#, gaussian_blur, contrast, intensity, histogram_shift])
 
     def __len__(self):
         return len(self.data)
