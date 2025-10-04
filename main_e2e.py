@@ -19,11 +19,13 @@ from scipy.special import softmax
 from monai.data.utils import pad_list_data_collate
 
 EPOCHS = 500
-BATCH_SIZE = 8
+BATCH_SIZE = 16
 WARMUP_EPOCHS = 50
 INITIAL_LR = 0.0
 TARGET_LR = 0.001
 SEED = 42
+MOMENTUM = 0.9
+WEIGHT_DECAY = 1e-3
 
 def main(dataset: str, backbone: str):
 
@@ -36,6 +38,8 @@ def main(dataset: str, backbone: str):
     mlflow.log_param("initial_lr", INITIAL_LR)
     mlflow.log_param("target_lr", TARGET_LR)
     mlflow.log_param("seed", SEED)
+    mlflow.log_param("momentum", MOMENTUM)
+    mlflow.log_param("weight_decay", WEIGHT_DECAY)
     mlflow.log_param("dataset", dataset)
     mlflow.log_param("backbone", backbone)    
 
@@ -154,7 +158,7 @@ def main(dataset: str, backbone: str):
     mlflow.log_param("num_params", model_params)
     
     loss_fn = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), momentum=0.9, weight_decay=1e-3)
+    optimizer = torch.optim.SGD(model.parameters(), momentum=MOMENTUM, weight_decay=WEIGHT_DECAY)
 
     scaler = GradScaler()
 
@@ -386,9 +390,10 @@ def main(dataset: str, backbone: str):
 
 if __name__ == "__main__":
 
-    # for dataset in ["adni", "lung_nodules", "soft_tissue_tumors"]:
-    for dataset in ["adni"]:
-        for backbone in ["resnet10", "resnet18", "densenet121"]:
+    for dataset in ["adni", "lung_nodules", "soft_tissue_tumors"]:
+        for backbone in ["resnet10"]:
+
+            print(f"Starting End-to-End experiment with dataset: {dataset}, backbone: {backbone}")
 
             mlflow.set_experiment(experiment_name=f"{dataset}")
             mlflow.start_run() 
