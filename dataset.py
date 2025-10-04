@@ -50,7 +50,8 @@ class RnCDataset(Dataset):
         self.training = training
 
         rotate = monai.transforms.RandRotate(prob=0.2, range_x=10, range_y=10, range_z=10)
-        scale = monai.transforms.RandZoom(prob=0.2, min_zoom=0.7, max_zoom=1.4)
+        # scale = monai.transforms.RandZoom(prob=0.2, min_zoom=0.7, max_zoom=1.4)
+        scale = monai.transforms.RandZoom(prob=0.2, min_zoom=0.9, max_zoom=1.4)
         gaussian_noise = monai.transforms.RandGaussianNoise()
         gaussian_blur = monai.transforms.RandGaussianSmooth(prob=0.2, sigma_x=(0.5, 1.0), sigma_y=(0.5, 10.0), sigma_z=(0.5, 1.0))
         contrast = monai.transforms.RandAdjustContrast()
