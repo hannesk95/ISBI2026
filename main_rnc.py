@@ -20,13 +20,15 @@ from losses import RnCLoss
 from monai.data.utils import pad_list_data_collate
 
 EPOCHS = 400
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 WARMUP_EPOCHS = 50
 INITIAL_LR = 0.0
 TARGET_LR = 0.001
 SEED = 42
+MOMENTUM = 0.9
+WEIGHT_DECAY = 1e-3
 
-def main(dataset: str, backbone: str):    
+def main(dataset: str, backbone: str):
 
     identifier = str(uuid.uuid4())
     seed_everything(SEED)
@@ -37,6 +39,8 @@ def main(dataset: str, backbone: str):
     mlflow.log_param("initial_lr", INITIAL_LR)
     mlflow.log_param("target_lr", TARGET_LR)
     mlflow.log_param("seed", SEED)
+    mlflow.log_param("momentum", MOMENTUM)
+    mlflow.log_param("weight_decay", WEIGHT_DECAY)
     mlflow.log_param("dataset", dataset)
     mlflow.log_param("backbone", backbone)   
 
@@ -155,7 +159,7 @@ def main(dataset: str, backbone: str):
     
     # loss_fn = torch.nn.CrossEntropyLoss()
     loss_fn = RnCLoss(temperature=2.0, label_diff='l1', feature_sim='l2') 
-    optimizer = torch.optim.SGD(model.parameters(), momentum=0.9, weight_decay=1e-3)
+    optimizer = torch.optim.SGD(model.parameters(), momentum=MOMENTUM, weight_decay=WEIGHT_DECAY)
 
     scaler = GradScaler()
 
@@ -292,11 +296,14 @@ def main(dataset: str, backbone: str):
 
 if __name__ == "__main__":
 
-    for dataset in ["lung_nodules", "soft_tissue_tumors", "adni"]:
-        # for backbone in ["resnet10", "resnet18", "densenet121"]:            
+    for dataset in ["lung_nodules", "soft_tissue_tumors", "adni"]:        
         for backbone in ["resnet10"]:            
+
+            print(f"Starting RNC experiment with dataset: {dataset}, backbone: {backbone}")
+
+            checkpoint = None
 
             mlflow.set_experiment(experiment_name=f"{dataset}")
             mlflow.start_run() 
-            main(dataset, backbone)
+            main(dataset, backbone, checkpoint)
             mlflow.end_run()
