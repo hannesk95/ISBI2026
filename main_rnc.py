@@ -238,11 +238,14 @@ def main(dataset: str, backbone: str):
             mlflow.log_artifact(f"model_loss_{identifier}.pth")
         
         if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            best_val_loss_epoch = epoch
-            torch.save(model.state_dict(), f"model_loss_{identifier}.pth")
-            mlflow.log_artifact(f"model_loss_{identifier}.pth")
-            print(f"Best model saved at epoch {epoch+1} with loss {best_val_loss:.4f}")
+            if val_loss != -np.inf:
+                best_val_loss = val_loss
+                best_val_loss_epoch = epoch
+                torch.save(model.state_dict(), f"model_loss_{identifier}.pth")
+                mlflow.log_artifact(f"model_loss_{identifier}.pth")
+                print(f"Best model saved at epoch {epoch+1} with loss {best_val_loss:.4f}")
+            else:
+                print("Warning: Validation loss is -inf, not saving model.")
             
         
         mlflow.log_metric("train_loss", train_loss, step=epoch)
@@ -259,7 +262,7 @@ def main(dataset: str, backbone: str):
     mlflow.log_param("best_val_loss_epoch", best_val_loss_epoch)           
 
     # Load the best model for evaluation  
-    model.load_state_dict(torch.load(f"model_loss_{identifier}.pth"))
+    # model.load_state_dict(torch.load(f"model_loss_{identifier}.pth"))
 
     model.eval()
     test_loss_list = []
