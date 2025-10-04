@@ -50,14 +50,15 @@ class RnCDataset(Dataset):
         self.training = training
 
         rotate = monai.transforms.RandRotate(prob=0.2, range_x=10, range_y=10, range_z=10)
-        # scale = monai.transforms.RandZoom(prob=0.2, min_zoom=0.7, max_zoom=1.4)
-        scale = monai.transforms.RandZoom(prob=0.2, min_zoom=0.9, max_zoom=1.4)
+        scale = monai.transforms.RandZoom(prob=0.2, min_zoom=0.7, max_zoom=1.4)
         gaussian_noise = monai.transforms.RandGaussianNoise()
         gaussian_blur = monai.transforms.RandGaussianSmooth(prob=0.2, sigma_x=(0.5, 1.0), sigma_y=(0.5, 10.0), sigma_z=(0.5, 1.0))
         contrast = monai.transforms.RandAdjustContrast()
         intensity = monai.transforms.RandScaleIntensity(factors=(2, 10))
         histogram_shift = monai.transforms.RandHistogramShift()
+        
         self.transforms = Compose([rotate, scale, gaussian_noise])#, gaussian_blur, contrast, intensity, histogram_shift])
+        self.transforms_wo_zoom = Compose([rotate, gaussian_noise])
 
     def __len__(self):
         return len(self.data)
@@ -67,8 +68,17 @@ class RnCDataset(Dataset):
         image = torch.load(image_path)
         label = self.labels[idx]
 
-        # if self.training:
-        image1 = self.transforms(image)
-        image2 = self.transforms(image)
+        if self.training:
+            try:
+                image1 = self.transforms(image)
+                image2 = self.transforms(image)
+
+            except:
+                image1 = self.transforms_wo_zoom(image)
+                image2 = self.transforms_wo_zoom(image)
+
+        else:
+            image1 = image
+            image2 = image
 
         return torch.stack([image1, image2], dim=0), label
