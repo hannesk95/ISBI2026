@@ -25,7 +25,9 @@ class OrdinalClassificationDataset(Dataset):
         contrast = monai.transforms.RandAdjustContrast()
         intensity = monai.transforms.RandScaleIntensity(factors=(2, 10))
         histogram_shift = monai.transforms.RandHistogramShift()
-        self.transforms = Compose([rotate, scale, gaussian_noise, gaussian_blur, contrast, intensity, histogram_shift])
+        
+        self.transforms = Compose([rotate, scale, gaussian_noise])#, gaussian_blur, contrast, intensity, histogram_shift])
+        self.transforms_wo_zoom = Compose([rotate, gaussian_noise])
 
     def __len__(self):
         return len(self.data)
@@ -36,11 +38,11 @@ class OrdinalClassificationDataset(Dataset):
         label = self.labels[idx]
 
         if self.training:
-            image = self.transforms(image)
-
-        # if "resnet" in self.backbone:
-        #     image = image.repeat(3, 1, 1, 1)  # Convert to 3 channels if input is single-channel
-
+            try:
+                image = self.transforms(image)
+            except:
+                image = self.transforms_wo_zoom(image)
+                
         return image, label
 
 class RnCDataset(Dataset):
